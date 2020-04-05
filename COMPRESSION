@@ -1,0 +1,151 @@
+Every ninth data byte after the header means the number of raw bytes.
+
+0x1 - read 1 raw byte
+0x3 - read 2 raw bytes
+0x7 - read 3 raw bytes
+0xf - read 4 raw bytes
+
+0x1f - read 5 raw bytes
+0x3f - read 6 raw bytes
+0x7f - read 7 raw bytes
+0xff - read 8 raw bytes
+
+Indices/offsets start from ee and wrap around when they reach ff
+
+1f 31 32 33 34 35 f2           f0 <- 3 + second nibble no. of bytes
+^ 5 bytes raw     ^dict entry  ^secondary index nibble, wraps around when the first byte does
+
+1111222233334444
+55 {31} {ee f0} {32} {f2 f0} {33} {f6 f0} {34} {fa f0}
+5555666677778888
+55 {35} {fe f0} {36} {02 00} {37} {06 00} {38} {0a 00}
+99990000aaaabbbb
+55 {39} {0e 00} {30} {12 00} {61} {16 00} {62} {1a 00}
+ccccddddeeeeffff
+55 {63} {1e 00} {64} {22 00} {65} {26 00} {66} {2a 00}
+gggghhhh11112222
+05 {67} {2e 00} {68} {32 00} {ee f5}
+
+1111222233334444
+55 {31} {ee f0} {32} {f2 f0} {33} {f6 f0} {34} {fa f0}
+5555666677778888
+55 {35} {fe f0} {36} {02 00} {37} {06 00} {38} {0a 00}
+99990000aaaabbbb
+55 {39} {0e 00} {30} {12 00} {61} {16 00} {62} {1a 00}
+ccccddddeeeeffff
+55 {63} {1e 00} {64} {22 00} {65} {26 00} {66} {2a 00}
+gggghhhhiiii11112222
+15 {67} {2e 00} {68} {32 00} {69} {36 00} {ee f5}
+
+1111222233334444555566667777888899990000aaaabbbbccccddddeeeeffffgggg11112222
+55 31 ee f0 32 f2 f0 33 f6 f0 34 fa f0
+55 35 fe f0 36 02 00 37 06 00 38 0a 00
+55 39 0e 00 30 12 00 61 16 00 62 1a 00
+55 63 1e 00 64 22 00 65 26 00 66 2a 00
+01 67 2e 00 ee f5
+
+1111222233334444
+55 {31} {ee f0} {32} {f2 f0} {33} {f6 f0} {34} {fa f0}
+5555666677778888
+55 {35} {fe f0} {36} {02 00} {37} {06 00} {38} {0a 00}
+99990000aaaabbbb
+55 {39} {0e 00} {30} {12 00} {61} {16 00} {62} {1a 00}
+ccccddddeeeeffff
+55 {63} {1e 00} {64} {22 00} {65} {26 00} {66} {2a 00}
+gggghhhhiiiijjjj
+55 {67} {2e 00} {68} {32 00} {69} {36 00} {6a} {3a 00}
+kkkkllllmmmmnnnn
+55 {6b} {3e 00} {6c} {42 00} {6d} {46 00} {6e} {4a 00}
+ooooppppqqqqrrrr
+55 {6f} {4e 00} {70} {52 00} {71} {56 00} {72} {5a 00}
+ssssttttuuuuvvvv
+55 {73} {5e 00} {74} {62 00} {75} {66 00} {76} {6a 00}
+wwwwxxxxyyyyzzzz
+55 {77} {6e 00} {78} {72 00} {79} {76 00} {7a} {7a 00}
+AAAABBBBCCCCDDDD
+55 {41} {7e 00} {42} {82 00} {43} {86 00} {44} {8a 00}
+EEEEFFFFGGGGHHHH
+55 {45} {8e 00} {46} {92 00} {47} {96 00} {48} {9a 00}
+IIIIJJJJKKKKLLLL
+55 {49} {9e 00} {4a} {a2 00} {4b} {a6 00} {4c} {aa 00}
+MMMMNNNNOOOOPPPP
+55 {4d} {ae 00} {4e} {b2 00} {4f} {b6 00} {50} {ba 00}
+QQQQRRRRSSSSTTTT
+55 {51} {be 00} {52} {c2 00} {53} {c6 00} {54} {ca 00}
+UUUUVVVVWWWWXXXX
+55 {55} {ce 00} {56} {d2 00} {57} {d6 00} {58} {da 00}
+YYYYZZZZ!!!!@@@@
+55 {59} {de 00} {5a} {e2 00} {21} {e6 00} {40} {ea 00}
+####$$$$%%%%^^^^
+55 {23} {ee 00} {24} {f2 00} {25} {f6 00} {5e} {fa 00}
+&&&&****(((())))
+55 {26} {fe 00} {2a} {02 10} {28} {06 10} {29} {0a 10}
+
+55 = 0101 0101 - every second byte is dictionary entry
+
+111123323321111
+1d {31} {ee f0} {32} {33} {33} {f2 f1} {ee f1}
+
+1d = 0001 1101 - raw byte, dictionary entry, three raw bytes, dictionary entry
+
+31    - ASCII 1
+ee f0 - first dictionary entry repeated thrice
+
+32 33 33 - ASCII 2 3 3
+f2 f1    - second dictionary entry repeated four times (w\ wrap-around)
+
+ee f1    - first dictionary entry repeated four times
+
+
+01
+   1 111111111111111111 111111111111111111 111111111111111111 111111111111111111 111111111111111111 111111111111111111 111111111111111111
+   {31} {ee ff} {00 0f} {12 0f} {24 0f} {36 0f} {48 0f} {5a 0f}
+00
+   111111111111111111
+   6c 0f
+   111111111111111111
+   7e 0f
+   111111111111111111
+   90 0f
+   111111111111111111
+   a2 0f
+   111111111111111111
+   b4 0f
+   111111111111111111
+   c6 0f
+   111111111111111111
+   d8 0f
+   111111111111111111
+   ea 0f
+00
+   111111111111111111
+   fc 0f
+   111111111111111111
+   0e 1f
+   111111111111111111
+   20 1f
+   111111111111111111
+   32 1f
+   111111111111111111
+   44 1f
+   111111111111111111
+   56 1f
+   111111111111111111
+   68 1f
+   111111111111111111
+   7a 1f
+00
+   111111111111111111
+   8c 1f
+   111111111111111111
+   9e 1f
+   111111111111111111
+   b0 1f
+   111111111111111111
+   c2 1f
+   111111111111111111
+   d4 1f
+   111111111111111111
+   e6 1f
+   111111111111111
+   f6 1c
