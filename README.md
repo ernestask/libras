@@ -107,62 +107,8 @@ Stored as a [SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/deskto
 `52 41 2D 3E` or `RA->` in ASCII.  
 
 ### Compression method
-(LZ77 derivative?)
 
-#### Example
-```
-1
-
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111111
-111111111111111
-```
-
-becomes
-
-```
-01 {   31} {EE FF} {00 0F} {12 0F} {24 0F} {36 0F} {48 0F} {5A 0F}
-00 {6C 0F} {7E 0F} {90 0F} {A2 0F} {B4 0F} {C6 0F} {D8 0F} {EA 0F}
-00 {FC 0F} {0E 1F} {20 1F} {32 1F} {44 1F} {56 1F} {68 1F} {7A 1F}
-00 {8C 1F} {9E 1F} {B0 1F} {C2 1F} {D4 1F} {E6 1F} {F6 1C}
-```
-
-Some patterns start emerging immediately, e.g.:
-
-1. Compressed data is encoded in blocks: one control byte and between eight and sixteen data/dictionary entry bytes.
-2. The control byte denotes the purpose of each block entry: bits with value of one signify raw data bytes and bits with value of zero mean dictionary entries.
-3. If we consider the dictionary entries as being little-endian words, the first nibble of the first byte is decompressed length + 3 and the rest is just an index.
-4. The initial dictionary entry has an index of `F0EE` (disregarding the length nibble).
+To be filled in later. Consult the code in the meantime.
 
 ## Encrypted file entry
 
