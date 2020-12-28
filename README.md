@@ -18,10 +18,10 @@ All integer and floating-point values are little-endian unless otherwise noted, 
 | `10`   | 4      | File table size                                                                    |
 | `14`   | 4      | Directory table size                                                               |
 | `18`   | 4      | Archive version<sup>[3](#header_footnote3)</sup> <sup>[4](#header_footnote4)</sup> |
-| `1C`   | 4      | ?                                                                                  |
-| `20`   | 4      | ?                                                                                  |
-| `24`   | 4      | ?                                                                                  |
-| `28`   | 4      | Format version<sup>[5](#header_footnote5)</sup>                                    |
+| `1C`   | 4      | Header checksum<sup>[5](#header_footnote5)</sup>                                   |
+| `20`   | 4      | File table checksum<sup>[5](#header_footnote5)</sup>                               |
+| `24`   | 4      | Directory table checksum<sup>[5](#header_footnote5)</sup>                          |
+| `28`   | 4      | Format version<sup>[6](#header_footnote6)</sup>                                    |
 
 <a name="header_footnote1">1</a>.
 `52 41 53 00` or `RAS\0` in ASCII.  
@@ -55,6 +55,8 @@ Encoded in binary32.
 Corresponds with the version of the archiver and is used for compatibility reasons.
 MAX-FX tools and Max Payne 2 modification tools ship RasMaker 1.2, so expect `3F99999A`.  
 <a name="header_footnote5">5</a>.
+CRC-32  
+<a name="header_footnote6">6</a>.
 `3` for the original Max Payne archives, `4` for Max Payne 2 archives.
 
 ## File table entry
