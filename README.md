@@ -7,6 +7,10 @@ Some of the features appear to not be supported even by the original RasMaker an
 All integer and floating-point values are little-endian unless otherwise noted, the latter of which you might want to consider reading as an integer on non-x86 platforms.
 <opinion>Storing versions as floats is stupid, anyway.</opinion>
 
+## Overview
+
+![Overview](/format.png)
+
 ## Header
 
 | Offset | Length | Purpose                                                                            |

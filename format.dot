@@ -1,0 +1,53 @@
+digraph structs {
+    node
+        [ shape=record
+        ];
+
+    "header"
+        [ label = "{ magic
+                   | encryption seed
+                   |
+                      { encrypted
+                      |
+                          { file table size\l
+                          | directory table size\l
+                          | archive version\l
+                          | header checksum\l
+                          | file table checksum\l
+                          | directory table checksum\l
+                          | format version\l
+                          }
+                      }
+                   }"
+        , xlabel = "Header"
+        ];
+    "file table"
+        [ label = "{ encrypted
+                   }
+                   |
+                   { name\l
+                   | file size\l
+                   | entry size\l
+                   | ?\l
+                   | parent directory index\l
+                   | ?\l
+                   | compression method\l
+                   | creation time\l
+                   }"
+        , xlabel = "File table"
+        ];
+    "directory table"
+        [ label = "{ encrypted
+                   }
+                   |
+                   { full path\l
+                   | creation time\l
+                   }"
+        , xlabel = "Directory table"
+        ];
+    "file data"
+        [ label = "File data"
+        ];
+
+    "header" -> "file table" -> "directory table" -> "file data";
+}
