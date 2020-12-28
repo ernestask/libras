@@ -63,7 +63,8 @@ CRC-32
 <a name="header_footnote6">6</a>.
 `3` for the original Max Payne archives, `4` for Max Payne 2 archives.
 
-## File table entry
+## File table
+### Entry
 
 | Length   | Purpose                                           |
 | -------- | ------------------------------------------------- |
@@ -85,7 +86,8 @@ CRC-32
 <a name="file_footnote2">2</a>.
 Stored as a [SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724950.aspx).
 
-## Directory table entry
+## Directory table
+### Entry
 
 | Length   | Purpose                                                                    |
 | -------- | -------------------------------------------------------------------------- |
@@ -98,7 +100,15 @@ Stored as a [SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/deskto
 1. the root directory has all fields set to 0;  
 2. the source directory (when not using -p) has the creation time of 1601-01-01 00:00:00.000.
 
-## Compressed file entry
+## File data
+### Stored file entry
+
+Uncompressed entries only contain the individual file data.
+
+### Compressed file entry
+
+Compressed entries, along with the individual file data, also contain information
+about the file size. They are recognizable by the prefix `RA->`.
 
 | Length | Purpose                                  |
 | ------ | ---------------------------------------- |
@@ -110,11 +120,10 @@ Stored as a [SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/deskto
 <a name="cmp_footnote1">1</a>.
 `52 41 2D 3E` or `RA->` in ASCII.  
 
-### Compression method
+#### Compression method
 
 To be filled in later. Consult the code in the meantime.
 
-## Encrypted file entry
+### Encrypted file entry
 
-While the format allows file encryption, neither Max Payne nor Max Payne 2 feature such archives.
-Such entries begin with `52 43 2D 3E` or `RC->` in ASCII.
+Encrypted entries don’t exist in the wild. They are recognizable by the prefix `RC->`.
