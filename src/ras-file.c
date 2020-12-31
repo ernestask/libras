@@ -124,7 +124,6 @@ decompress (RasFile        *self,
     {
         bool raw[8];
         unsigned char byte;
-        int chunk_length = 0;
 
         byte = *(s++);
 
@@ -133,12 +132,10 @@ decompress (RasFile        *self,
             if (byte & (0x1 << i))
             {
                 raw[i] = true;
-                chunk_length += 1;
             }
             else
             {
                 raw[i] = false;
-                chunk_length += 2;
             }
         }
 
