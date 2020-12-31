@@ -122,26 +122,13 @@ decompress (RasFile        *self,
 
     for (const uint8_t *s = self->data + 12; self->data + self->entry_size > s; )
     {
-        bool raw[8];
         uint8_t byte;
 
         byte = *(s++);
 
-        for (int i = 0; i < 8; i++)
-        {
-            if (byte & (0x1 << i))
-            {
-                raw[i] = true;
-            }
-            else
-            {
-                raw[i] = false;
-            }
-        }
-
         for (int i = 0; i < 8 && self->data + self->entry_size > s; i++)
         {
-            if (raw[i])
+            if (byte & (1 << i))
             {
                 ras_buffer_push_literal (buffer, *s);
 
