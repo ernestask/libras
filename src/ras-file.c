@@ -139,7 +139,7 @@ decompress (RasFile        *self,
                 uint16_t pointer;
                 uint8_t length;
 
-                pointer = (*(s + 1) & 0xF0) << 4  | (*s & 0xFF);
+                pointer = (*(s + 1) & 0xF0) << 4  | *s;
                 length = (*(s + 1) & 0xF) + 3;
 
                 ras_buffer_push_pointer (buffer, pointer, length);
