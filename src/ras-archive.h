@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "ras-types.h"
+
 #include <stdint.h>
 
 #include <gio/gio.h>
@@ -28,29 +30,28 @@
 
 G_BEGIN_DECLS
 
-typedef struct _RasDirectory RasDirectory;
-
 G_DECLARE_FINAL_TYPE (RasArchive, ras_archive, RAS, ARCHIVE, GObject)
 
 typedef enum
 {
     RAS_ERROR_EMPTY,
+    RAS_ERROR_INVALID_CHECKSUM,
     RAS_ERROR_INVALID_MAGIC,
     RAS_ERROR_MALFORMED,
-    RAS_ERROR_TRUNCATED
+    RAS_ERROR_TRUNCATED,
+    RAS_ERROR_UNSUPPORTED_VERSION,
 } RasErrorEnum;
 
 RasDirectory *ras_archive_get_directory_by_index (RasArchive   *archive,
                                                   unsigned int  index);
 
-uint32_t      ras_archive_get_file_count         (RasArchive *archive);
-uint32_t      ras_archive_get_directory_count    (RasArchive *archive);
-uint32_t      ras_archive_get_format_version     (RasArchive *archive);
+size_t        ras_archive_get_file_count         (RasArchive *archive);
+size_t        ras_archive_get_directory_count    (RasArchive *archive);
 
 GList        *ras_archive_get_directory_table    (RasArchive *archive);
 GList        *ras_archive_get_file_table         (RasArchive *archive);
 
-RasArchive   *ras_archive_new_for_path           (const char  *path,
+RasArchive   *ras_archive_load                   (GBytes     *bytes,
                                                   GError     **error);
 
 G_END_DECLS

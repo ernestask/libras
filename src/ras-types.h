@@ -22,12 +22,14 @@
 
 G_BEGIN_DECLS
 
-#define RAS_TYPE_BUFFER (ras_buffer_get_type ())
-#define RAS_TYPE_DIRECTORY (ras_directory_get_type ())
-#define RAS_TYPE_FILE (ras_file_get_type ())
+#define RAS_TYPE_BUFFER ras_buffer_get_type ()
+#define RAS_TYPE_DIRECTORY ras_directory_get_type ()
+#define RAS_TYPE_FILE ras_file_get_type ()
+#define RAS_TYPE_STREAM_CODEC ras_stream_codec_get_type ()
 
 typedef struct _RasBuffer RasBuffer;
 typedef struct _RasDirectory RasDirectory;
 typedef struct _RasFile RasFile;
+typedef struct _RasStreamCodec RasStreamCodec;
 
 G_END_DECLS

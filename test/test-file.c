@@ -37,6 +37,8 @@ main (int    argc,
             NULL, NULL,
         }
     };
+    g_autoptr (GMappedFile) file = NULL;
+    g_autoptr (GBytes) bytes = NULL;
     g_autoptr (RasArchive) archive = NULL;
     g_autoptr (GError) error = NULL;
     g_autoptr (GList) directory_table = NULL;
@@ -61,17 +63,18 @@ main (int    argc,
         return EXIT_FAILURE;
     }
 
-    archive = ras_archive_new_for_path (files[0], &error);
+    file = g_mapped_file_new (files[0], false, &error);
+    if (NULL == file)
+    {
+        g_printerr ("Failed to open archive: %s\n", error->message);
+
+        return EXIT_FAILURE;
+    }
+    bytes = g_mapped_file_get_bytes (file);
+    archive = ras_archive_load (bytes, &error);
     if (NULL == archive)
     {
-        if (NULL != error)
-        {
-            g_printerr ("Failed to open archive: %s\n", error->message);
-        }
-        else
-        {
-            g_printerr ("Failed to open archive\n");
-        }
+        g_printerr ("Failed to load archive: %s\n", error->message);
 
         return EXIT_FAILURE;
     }

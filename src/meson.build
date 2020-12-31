@@ -13,8 +13,6 @@ libras_sources = files(
   'ras-directory.c',
   'ras-file.c',
   'ras-stream-codec.c',
-  'ras-utils.c',
-  'ras-utils.h',
 )
 
 libras_dependencies = [

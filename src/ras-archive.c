@@ -17,35 +17,41 @@
  */
 
 #include "ras-archive.h"
-
 #include "ras-directory.h"
 #include "ras-file.h"
+#include "ras-stream-codec.h"
 #include "ras-utils.h"
 
+#include <iso646.h>
 #include <stdbool.h>
 #include <string.h>
-
 #include <zlib.h>
 
-#define RAS_HEADER_LENGTH 44
+enum
+{
+    RAS_HEADER_OFFSET_MAGIC = 0x0,
+    RAS_HEADER_OFFSET_ENCRYPTION_SEED = 0x4,
+    RAS_HEADER_OFFSET_FILE_COUNT = 0x8,
+    RAS_HEADER_OFFSET_DIRECTORY_COUNT = 0xC,
+    RAS_HEADER_OFFSET_FILE_TABLE_SIZE = 0x10,
+    RAS_HEADER_OFFSET_DIRECTORY_TABLE_SIZE = 0x14,
+    RAS_HEADER_OFFSET_ARCHIVE_VERSION = 0x18,
+    RAS_HEADER_OFFSET_HEADER_CHECKSUM = 0x1C,
+    RAS_HEADER_OFFSET_FILE_TABLE_CHECKSUM = 0x20,
+    RAS_HEADER_OFFSET_DIRECTORY_TABLE_CHECKSUM = 0x24,
+    RAS_HEADER_OFFSET_FORMAT_VERSION = 0x28,
+};
+
+#define RAS_FORMAT_VERSION 3
+#define RAS_HEADER_LENGTH 0x2C
+#define RAS_MAGIC "RAS"
+#define RAS_MAGIC_LENGTH (strlen (RAS_MAGIC) + 1)
 
 struct _RasArchive
 {
     GObject parent_instance;
 
-    GMappedFile *mapped_file;
-
-    struct
-    {
-        int32_t seed;
-        uint32_t file_count;
-        uint32_t directory_count;
-        uint32_t file_table_size;
-        uint32_t directory_table_size;
-        uint32_t archiver_version;
-        int32_t reserved[3];
-        uint32_t format_version;
-    } header;
+    GBytes *bytes;
 
     GList *file_table;
     GHashTable *directory_table;
@@ -54,20 +60,16 @@ struct _RasArchive
 G_DEFINE_TYPE (RasArchive, ras_archive, G_TYPE_OBJECT)
 
 static void
-finalize (GObject *object)
+ras_archive_finalize (GObject *object)
 {
     RasArchive *self;
 
     self = RAS_ARCHIVE (object);
 
-    g_list_free_full (self->file_table, g_object_unref);
-    self->file_table = NULL;
-
+    g_clear_list (&self->file_table, g_object_unref);
     g_clear_pointer (&self->directory_table, g_hash_table_destroy);
 
-    (void) memset (&self->header, 0, sizeof (self->header));
-
-    g_clear_pointer (&self->mapped_file, g_mapped_file_unref);
+    g_clear_pointer (&self->bytes, g_bytes_unref);
 
     G_OBJECT_CLASS (ras_archive_parent_class)->finalize (object);
 }
@@ -79,7 +81,7 @@ ras_archive_class_init (RasArchiveClass *klass)
 
     object_class = G_OBJECT_CLASS (klass);
 
-    object_class->finalize = finalize;
+    object_class->finalize = ras_archive_finalize;
 }
 
 static void
@@ -111,28 +113,20 @@ ras_archive_get_directory_by_index (RasArchive   *self,
     return RAS_DIRECTORY (value);
 }
 
-uint32_t
+size_t
 ras_archive_get_file_count (RasArchive *self)
 {
     g_return_val_if_fail (RAS_IS_ARCHIVE (self), 0);
 
-    return self->header.file_count;
+    return g_list_length (self->file_table);
 }
 
-uint32_t
-ras_archive_get_directory_count (RasArchive *archive)
+size_t
+ras_archive_get_directory_count (RasArchive *self)
 {
-    g_return_val_if_fail (RAS_IS_ARCHIVE (archive), 0);
+    g_return_val_if_fail (RAS_IS_ARCHIVE (self), 0);
 
-    return archive->header.directory_count;
-}
-
-uint32_t
-ras_archive_get_format_version (RasArchive *archive)
-{
-    g_return_val_if_fail (RAS_IS_ARCHIVE (archive), 0);
-
-    return archive->header.format_version;
+    return g_hash_table_size (self->directory_table);
 }
 
 GList *
@@ -152,80 +146,16 @@ ras_archive_get_file_table (RasArchive *archive)
 }
 
 static bool
-populate_header (RasArchive  *archive,
-                 GError     **error)
+populate_file_table (RasArchive     *archive,
+                     const uint8_t  *data,
+                     size_t          file_count,
+                     const uint8_t  *file_data,
+                     GError        **error)
 {
-    const char *cursor;
-
-    cursor = g_mapped_file_get_contents (archive->mapped_file);
-
-    if (g_mapped_file_get_length (archive->mapped_file) < RAS_HEADER_LENGTH)
-    {
-        g_set_error_literal (error,
-                             RAS_ARCHIVE_ERROR,
-                             RAS_ERROR_TRUNCATED,
-                             "Truncated file");
-
-        return false;
-    }
-
-    if (g_strcmp0 (cursor, "RAS") != 0)
-    {
-        g_set_error_literal (error,
-                             RAS_ARCHIVE_ERROR,
-                             RAS_ERROR_INVALID_MAGIC,
-                             "Not a RAS archive");
-
-        return false;
-    }
-
-    archive->header.seed = GINT32_FROM_LE (((int32_t *) cursor)[1]);
-
-    ras_decrypt_with_seed (36, (uint8_t *) cursor + 8, archive->header.seed);
-
-    archive->header.file_count = GUINT32_FROM_LE (((uint32_t *) cursor)[2]);
-    archive->header.directory_count = GUINT32_FROM_LE (((uint32_t *) cursor)[3]);
-    archive->header.file_table_size = GUINT32_FROM_LE (((uint32_t *) cursor)[4]);
-    archive->header.directory_table_size = GUINT32_FROM_LE (((uint32_t *) cursor)[5]);
-    archive->header.archiver_version = GUINT32_FROM_LE (((uint32_t *) cursor)[6]);
-    archive->header.reserved[0] = GINT32_FROM_LE (((int32_t *) cursor)[7]);
-    archive->header.reserved[1] = GINT32_FROM_LE (((int32_t *) cursor)[8]);
-    archive->header.reserved[2] = GINT32_FROM_LE (((int32_t *) cursor)[9]);
-    archive->header.format_version = GUINT32_FROM_LE (((uint32_t *) cursor)[10]);
-
-    return true;
-}
-
-static bool
-populate_file_table (RasArchive  *archive,
-                     GError     **error)
-{
-    size_t file_length;
-    const char *cursor;
-    const char *file_table_end;
-    const char *data_section;
-
     g_assert (RAS_IS_ARCHIVE (archive));
+    g_assert (data not_eq NULL);
 
-    file_length = g_mapped_file_get_length (archive->mapped_file);
-    if (RAS_HEADER_LENGTH + archive->header.file_table_size > file_length)
-    {
-        g_set_error_literal (error,
-                             RAS_ARCHIVE_ERROR,
-                             RAS_ERROR_TRUNCATED,
-                             "Truncated file");
-
-        return false;
-    }
-    cursor = g_mapped_file_get_contents (archive->mapped_file) + RAS_HEADER_LENGTH;
-    file_table_end = cursor + archive->header.file_table_size;
-    data_section = file_table_end + archive->header.directory_table_size;
-
-    ras_decrypt_with_seed (archive->header.file_table_size,
-                           (unsigned char *) cursor,
-                           archive->header.seed);
-
-    while (cursor < file_table_end)
+    for (size_t i = 0; i < file_count; i++)
     {
         const char *name;
         size_t name_length;
@@ -240,23 +170,23 @@ populate_file_table (RasArchive  *archive,
         RasFile *file;
         RasDirectory *directory;
 
-        name = cursor;
+        name = (const char *) data;
         name_length = strlen (name);
 
-        cursor += name_length + 1;
+        data += name_length + 1;
 
-        size = GUINT32_FROM_LE (((uint32_t *) cursor)[0]);
-        entry_size = GUINT32_FROM_LE (((uint32_t *) cursor)[1]);
-        reserved0 = GUINT32_FROM_LE (((uint32_t *) cursor)[2]);
-        parent_directory_index = GUINT32_FROM_LE (((uint32_t *) cursor)[3]);
-        reserved1 = GUINT32_FROM_LE (((uint32_t *) cursor)[4]);
-        compression_method = GUINT32_FROM_LE (((uint32_t *) cursor)[5]);
+        size = GUINT32_FROM_LE (((uint32_t *) data)[0]);
+        entry_size = GUINT32_FROM_LE (((uint32_t *) data)[1]);
+        reserved0 = GUINT32_FROM_LE (((uint32_t *) data)[2]);
+        parent_directory_index = GUINT32_FROM_LE (((uint32_t *) data)[3]);
+        reserved1 = GUINT32_FROM_LE (((uint32_t *) data)[4]);
+        compression_method = GUINT32_FROM_LE (((uint32_t *) data)[5]);
 
-        cursor += 24;
+        data += 24;
 
         for (size_t i = 0; G_N_ELEMENTS (creation_time) > i; i++)
         {
-            creation_time[i] = GUINT16_FROM_LE (((uint16_t *) cursor)[i]);
+            creation_time[i] = GUINT16_FROM_LE (((uint16_t *) data)[i]);
         }
 
         creation_date_time = g_date_time_new_utc (creation_time[0],
@@ -273,7 +203,7 @@ populate_file_table (RasArchive  *archive,
             return false;
         }
 
-        cursor += sizeof (creation_time);
+        data += sizeof (creation_time);
 
         file = ras_file_new (name,
                              size,
@@ -283,7 +213,7 @@ populate_file_table (RasArchive  *archive,
                              reserved1,
                              compression_method,
                              creation_date_time,
-                             data_section);
+                             file_data);
 
         archive->file_table = g_list_prepend (archive->file_table, file);
 
@@ -291,7 +221,7 @@ populate_file_table (RasArchive  *archive,
 
         ras_directory_add_file (directory, file);
 
-        data_section += entry_size;
+        file_data += entry_size;
     }
 
     return true;
@@ -314,37 +244,28 @@ insert_directory (RasArchive   *archive,
 }
 
 static bool
-populate_directory_table (RasArchive  *archive,
-                          GError     **error)
+populate_directory_table (RasArchive     *archive,
+                          const uint8_t  *data,
+                          size_t          directory_count,
+                          GError        **error)
 {
-    const char *cursor;
-    const char *directory_table_end;
-
     g_assert (RAS_IS_ARCHIVE (archive));
 
-    cursor = g_mapped_file_get_contents (archive->mapped_file);
-    cursor += RAS_HEADER_LENGTH + archive->header.file_table_size;
-    directory_table_end = cursor + archive->header.directory_table_size;
-
-    ras_decrypt_with_seed (archive->header.directory_table_size,
-                           (uint8_t *) cursor,
-                           archive->header.seed);
-
-    while (cursor < directory_table_end)
+    for (size_t i = 0; i < directory_count; i++)
     {
         const char *name;
         size_t name_length;
         uint16_t creation_time[8];
         g_autoptr (GDateTime) creation_date_time = NULL;
 
-        name = cursor;
+        name = (const char *) data;
         name_length = strlen (name);
 
-        cursor += name_length + 1;
+        data += name_length + 1;
 
         for (size_t i = 0; G_N_ELEMENTS (creation_time) > i; i++)
         {
-            creation_time[i] = GUINT16_FROM_LE (((uint16_t *) cursor)[i]);
+            creation_time[i] = GUINT16_FROM_LE (((uint16_t *) data)[i]);
         }
 
         creation_date_time = g_date_time_new_utc (creation_time[0],
@@ -356,7 +277,7 @@ populate_directory_table (RasArchive  *archive,
 
         if (NULL == creation_date_time)
         {
-            if (!(1 == name_length && '\\' == *name))
+            if (strcmp (name, "\\") not_eq 0)
             {
                 g_set_error_literal (error,
                                      RAS_ARCHIVE_ERROR, RAS_ERROR_MALFORMED,
@@ -369,47 +290,174 @@ populate_directory_table (RasArchive  *archive,
         insert_directory (archive,
                           ras_directory_new (name, creation_date_time));
 
-        cursor += sizeof (creation_time);
+        data += sizeof (creation_time);
     }
 
     return true;
 }
 
 RasArchive *
-ras_archive_new_for_path (const char  *path,
-                          GError     **error)
+ras_archive_load (GBytes  *bytes,
+                  GError **error)
 {
-    RasArchive *archive;
+    size_t size;
+    const uint8_t *data;
+    uint8_t header[RAS_HEADER_LENGTH];
+    int32_t encryption_seed;
+    g_autoptr (RasStreamCodec) codec = NULL;
+    size_t bytes_read;
+    size_t bytes_written;
+    g_autoptr (RasArchive) archive = NULL;
+    size_t file_count;
+    size_t directory_count;
+    size_t file_table_size;
+    size_t directory_table_size;
 
-    g_return_val_if_fail (NULL != path, NULL);
+    g_return_val_if_fail (bytes not_eq NULL, NULL);
+
+    data = g_bytes_get_data (bytes, &size);
+
+    if (size < RAS_HEADER_LENGTH)
+    {
+        g_set_error_literal (error,
+                             RAS_ARCHIVE_ERROR,
+                             RAS_ERROR_TRUNCATED,
+                             "Truncated file");
+
+        return NULL;
+    }
+    if (memcmp (data, RAS_MAGIC, RAS_MAGIC_LENGTH) not_eq 0)
+    {
+        g_set_error_literal (error,
+                             RAS_ARCHIVE_ERROR,
+                             RAS_ERROR_INVALID_MAGIC,
+                             "Not a RAS archive");
+
+        return NULL;
+    }
+
+    (void) memcpy (header, data, RAS_HEADER_LENGTH);
+
+    encryption_seed = GINT32_FROM_LE (*((int32_t *) (data + RAS_HEADER_OFFSET_ENCRYPTION_SEED)));
+    codec = ras_stream_codec_new (encryption_seed);
+
+    g_converter_convert (G_CONVERTER (codec),
+                         header + 8, 36,
+                         (void *) header + 8, 36,
+                         G_CONVERTER_INPUT_AT_END,
+                         &bytes_read, &bytes_written,
+                         NULL);
+
+    if (GUINT32_FROM_LE (*(uint32_t *) (header + RAS_HEADER_OFFSET_FORMAT_VERSION)) not_eq RAS_FORMAT_VERSION)
+    {
+        g_set_error_literal (error,
+                             RAS_ARCHIVE_ERROR,
+                             RAS_ERROR_UNSUPPORTED_VERSION,
+                             "Unsupported format version");
+
+        return NULL;
+    }
+
+    {
+        uint32_t checksum;
+        uint32_t crc;
+
+        checksum = GUINT32_FROM_LE (*((uint32_t *) (header + RAS_HEADER_OFFSET_HEADER_CHECKSUM)));
+
+        *((uint32_t *) (header + RAS_HEADER_OFFSET_HEADER_CHECKSUM)) = 0;
+
+        crc = crc32_z (0, Z_NULL, 0);
+        crc = crc32_z (crc, header, RAS_HEADER_LENGTH);
+        if (crc not_eq checksum)
+        {
+            g_set_error_literal (error,
+                                 RAS_ARCHIVE_ERROR,
+                                 RAS_ERROR_UNSUPPORTED_VERSION,
+                                 "Invalid header checksum");
+
+            return NULL;
+        }
+    }
 
     archive = g_object_new (RAS_TYPE_ARCHIVE, NULL);
 
-    archive->mapped_file = g_mapped_file_new (path, true, error);
-    if (NULL == archive->mapped_file)
+    archive->bytes = g_bytes_ref (bytes);
+
+    file_count = GUINT32_FROM_LE (*((uint32_t *) (header + RAS_HEADER_OFFSET_FILE_COUNT)));
+    directory_count = GUINT32_FROM_LE (*((uint32_t *) (header + RAS_HEADER_OFFSET_DIRECTORY_COUNT)));
+    file_table_size = GUINT32_FROM_LE (*((uint32_t *) (header + RAS_HEADER_OFFSET_FILE_TABLE_SIZE)));
+    directory_table_size = GUINT32_FROM_LE (*((uint32_t *) (header + RAS_HEADER_OFFSET_DIRECTORY_TABLE_SIZE)));
+
     {
-        return NULL;
+        g_autofree uint8_t *directory_table = NULL;
+        uint32_t checksum;
+        uint32_t crc;
+
+        directory_table = malloc (directory_table_size);
+        checksum = GUINT32_FROM_LE (*((uint32_t *) (header + RAS_HEADER_OFFSET_DIRECTORY_TABLE_CHECKSUM)));
+
+        g_converter_reset (G_CONVERTER (codec));
+        g_converter_convert (G_CONVERTER (codec),
+                             data + RAS_HEADER_LENGTH + file_table_size, directory_table_size,
+                             directory_table, directory_table_size,
+                             G_CONVERTER_INPUT_AT_END,
+                             &bytes_read, &bytes_written,
+                             NULL);
+
+        crc = crc32_z (0, Z_NULL, 0);
+        crc = crc32_z (crc, directory_table, directory_table_size);
+        if (crc not_eq checksum)
+        {
+            g_set_error_literal (error,
+                                 RAS_ARCHIVE_ERROR,
+                                 RAS_ERROR_UNSUPPORTED_VERSION,
+                                 "Invalid directory table checksum");
+
+            return NULL;
+        }
+
+        if (!populate_directory_table (archive, directory_table, directory_count, error))
+        {
+            return NULL;
+        }
     }
 
-    /* Technically, the order is header -> file table -> directory table,
-     * but we need directories to be present when populating the file table,
-     * as they are added to their corresponding directory objects.
-     */
-
-    if (!populate_header (archive, error))
     {
-        return NULL;
+        g_autofree uint8_t *file_table = NULL;
+        uint32_t checksum;
+        uint32_t crc;
+        const uint8_t *file_data;
+
+        file_table = malloc (file_table_size);
+        checksum = GUINT32_FROM_LE (*((uint32_t *) (header + RAS_HEADER_OFFSET_FILE_TABLE_CHECKSUM)));
+
+        g_converter_reset (G_CONVERTER (codec));
+        g_converter_convert (G_CONVERTER (codec),
+                             data + RAS_HEADER_LENGTH, file_table_size,
+                             file_table, file_table_size,
+                             G_CONVERTER_INPUT_AT_END,
+                             &bytes_read, &bytes_written,
+                             NULL);
+
+        crc = crc32_z (0, Z_NULL, 0);
+        crc = crc32_z (crc, file_table, file_table_size);
+        if (crc not_eq checksum)
+        {
+            g_set_error_literal (error,
+                                 RAS_ARCHIVE_ERROR,
+                                 RAS_ERROR_UNSUPPORTED_VERSION,
+                                 "Invalid file table checksum");
+
+            return NULL;
+        }
+
+        file_data = data + RAS_HEADER_LENGTH + file_table_size + directory_table_size;
+
+        if (!populate_file_table (archive, file_table, file_count, file_data, error))
+        {
+            return NULL;
+        }
     }
 
-    if (!populate_directory_table (archive, error))
-    {
-        return NULL;
-    }
-
-    if (!populate_file_table (archive, error))
-    {
-        return NULL;
-    }
-
-    return archive;
+    return g_steal_pointer (&archive);
 }
