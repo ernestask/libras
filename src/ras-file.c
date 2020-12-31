@@ -36,7 +36,7 @@ struct _RasFile
     uint32_t compression_method;
     GDateTime *creation_date_time;
 
-    const char *data;
+    const uint8_t *data;
 };
 
 G_DEFINE_TYPE (RasFile, ras_file, G_TYPE_OBJECT)
@@ -120,10 +120,10 @@ decompress (RasFile        *self,
                       G_CALLBACK (ras_file_write_out_decompression_buffer),
                       stream);
 
-    for (const char *s = self->data + 12; self->data + self->entry_size > s; )
+    for (const uint8_t *s = self->data + 12; self->data + self->entry_size > s; )
     {
         bool raw[8];
-        unsigned char byte;
+        uint8_t byte;
 
         byte = *(s++);
 
@@ -198,7 +198,7 @@ ras_file_new (const char           *name,
               uint32_t              __,
               RasCompressionMethod  compression_method,
               GDateTime            *creation_date_time,
-              const char           *data)
+              const uint8_t        *data)
 {
     RasFile *file;
 

@@ -54,4 +54,4 @@ RasFile              *ras_file_new                    (const char            *na
                                                        uint32_t               __,
                                                        RasCompressionMethod   compression_method,
                                                        GDateTime             *creation_date_time,
-                                                       const char            *data);
+                                                       const uint8_t          *data);
