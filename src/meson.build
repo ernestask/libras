@@ -3,6 +3,7 @@ libras_headers = files(
   'ras-buffer.h',
   'ras-directory.h',
   'ras-file.h',
+  'ras-stream-codec.h',
   'ras-types.h',
 )
 
@@ -11,6 +12,7 @@ libras_sources = files(
   'ras-buffer.c',
   'ras-directory.c',
   'ras-file.c',
+  'ras-stream-codec.c',
   'ras-utils.c',
   'ras-utils.h',
 )
