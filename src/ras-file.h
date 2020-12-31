@@ -20,12 +20,10 @@
 
 #include "ras-types.h"
 
+#include <gio/gio.h>
+#include <glib-object.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include <gio/gio.h>
-
-#include <glib-object.h>
 
 G_BEGIN_DECLS
 
