@@ -59,7 +59,8 @@ Encoded in binary32.
 Corresponds with the version of the archiver and is used for compatibility reasons.
 MAX-FX tools and Max Payne 2 modification tools ship RasMaker 1.2, so expect `3F99999A`.  
 <a name="header_footnote5">5</a>.
-CRC-32  
+CRC-32
+(x<sup>32</sup> + x<sup>26</sup> + x<sup>23</sup> + x<sup>22</sup> + x<sup>16</sup> + x<sup>12</sup> + x<sup>11</sup> + x<sup>10</sup> + x<sup>8</sup> + x<sup>7</sup> + x<sup>5</sup> + x<sup>4</sup> + x<sup>2</sup> + x + 1)  
 <a name="header_footnote6">6</a>.
 `3` for the original Max Payne archives, `4` for Max Payne 2 archives.
 
