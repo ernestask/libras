@@ -13,6 +13,7 @@ jobs:
         run: |
           apt update
           apt install --assume-yes --no-install-recommends \
+            gcc \
             libglib2.0-dev \
             meson
         env:
