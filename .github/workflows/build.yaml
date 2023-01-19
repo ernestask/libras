@@ -1,0 +1,23 @@
+name: Build
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+jobs:
+  build:
+    container: debian:bookworm-slim
+    steps:
+      - name: Set up dependencies
+        run: |
+          apt update
+          apt install glib-2.0-dev meson
+      - name: Build
+        run: |
+          meson setup . build
+          meson compile -C build
+      - name: Upload build log
+        uses: actions/upload-artifact@v3
+        with:
+          path: build/meson-logs/meson-log.txt
+          retention-days: 7
