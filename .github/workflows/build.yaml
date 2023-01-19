@@ -17,10 +17,15 @@ jobs:
             meson
         env:
           DEBIAN_FRONTEND: noninteractive
+
+      - name: Check out repository
+        uses: actions/checkout@v3
+
       - name: Build
         run: |
           meson setup . build
           meson compile -C build
+
       - name: Upload build log
         uses: actions/upload-artifact@v3
         with:
