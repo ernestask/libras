@@ -287,6 +287,8 @@ populate_directory_table (RasArchive     *archive,
             }
         }
 
+        g_debug ("Inserting directory to table: %s", name);
+
         insert_directory (archive,
                           ras_directory_new (name, creation_date_time));
 
