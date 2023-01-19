@@ -350,7 +350,7 @@ ras_archive_load (GBytes  *bytes,
                          &bytes_read, &bytes_written,
                          NULL);
 
-    if (GUINT32_FROM_LE (*(uint32_t *) (header + RAS_HEADER_OFFSET_FORMAT_VERSION)) not_eq RAS_FORMAT_VERSION)
+    if (GUINT32_FROM_LE (*(uint32_t *) (header + RAS_HEADER_OFFSET_FORMAT_VERSION)) < RAS_FORMAT_VERSION)
     {
         g_set_error_literal (error,
                              RAS_ARCHIVE_ERROR,
