@@ -12,7 +12,11 @@ jobs:
       - name: Set up dependencies
         run: |
           apt update
-          apt install libglib2.0-dev meson
+          apt install --assume-yes --no-install-recommends \
+            libglib2.0-dev \
+            meson
+        env:
+          DEBIAN_FRONTEND: noninteractive
       - name: Build
         run: |
           meson setup . build
