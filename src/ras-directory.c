@@ -104,6 +104,14 @@ ras_directory_get_name (RasDirectory *self,
     return g_strdup (self->name);
 }
 
+bool
+ras_directory_is_root (RasDirectory *self)
+{
+    g_return_val_if_fail (RAS_IS_DIRECTORY (self), NULL);
+
+    return g_strcmp0 (self->name, "\\") == 0;
+}
+
 RasDirectory *
 ras_directory_new (const char *name,
                    GDateTime  *creation_date_time)

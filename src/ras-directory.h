@@ -34,6 +34,8 @@ GList        *ras_directory_get_files (RasDirectory *directory);
 char         *ras_directory_get_name  (RasDirectory *directory,
                                        bool          replace_backslashes);
 
+bool          ras_directory_is_root   (RasDirectory *directory);
+
 RasDirectory *ras_directory_new       (const char *name,
                                        GDateTime  *creation_date_time);
 

@@ -130,17 +130,21 @@ main (int    argc,
             directory_name = ras_directory_get_name (RAS_DIRECTORY (directory->data), true);
             directory_file = g_file_new_for_path (directory_name);
 
-            if (!g_file_make_directory_with_parents (directory_file, NULL, &error))
+            if (!ras_directory_is_root (RAS_DIRECTORY (directory->data)))
             {
-                if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+                if (!g_file_make_directory_with_parents (directory_file, NULL, &error))
                 {
-                    g_clear_error (&error);
-                }
-                else
-                {
-                    g_printerr ("Failed to create directory: %s\n", error->message);
+                    if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+                    {
+                        g_clear_error (&error);
+                    }
+                    else
+                    {
+                        g_printerr ("Failed to create directory %s: %s\n",
+                                    directory_name, error->message);
 
-                    return EXIT_FAILURE;
+                        return EXIT_FAILURE;
+                    }
                 }
             }
 
