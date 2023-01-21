@@ -1,3 +1,25 @@
+# Building
+
+1. Set up the build:
+    ```sh
+    meson setup . build
+    ```
+2. Build the library:
+    ```sh
+    meson compile -C build
+    ```
+
+## Running the example archiver
+
+```sh
+./build/test/test-file --decompress <file.ras>
+```
+
+The above will decompress the archive in the working directory, as there is
+currently no option to specify the output location.
+
+Compressing (and other write operations) are also not yet implemented.
+
 # File format
 
 Caveat:
