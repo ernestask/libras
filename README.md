@@ -15,10 +15,7 @@
 ./build/test/test-file --decompress <file.ras>
 ```
 
-The above will decompress the archive in the working directory, as there is
-currently no option to specify the output location.
-
-Compressing (and other write operations) is also not yet implemented.
+Compressing (and other write operations) is not (yet?) implemented.
 
 # File format
 
