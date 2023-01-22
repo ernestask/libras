@@ -15,20 +15,18 @@
 ./build/test/test-file --decompress <file.ras>
 ```
 
-Compressing (and other write operations) is not (yet?) implemented.
+Compressing is not yet implemented.
 
 # File format
 
-Caveat:
-the primary goal of this document is to familiarize the reader with the details required for reading and/or writing archives, compatible with Max Payne games.
-Some of the features appear to not be supported even by the original RasMaker and thus might never be properly documented, if at all.
-
-All integer and floating-point values are little-endian unless otherwise noted, the latter of which you might want to consider reading as an integer on non-x86 platforms.
+All integer and floating-point values are little-endian unless otherwise noted,
+the latter of which you might want to consider reading as an integer on
+non-x86 platforms.
 <opinion>Storing versions as floats is stupid, anyway.</opinion>
 
 ## Overview
 
-![Overview](/format.png)
+![Overview](ras.png)
 
 ## Header
 
@@ -79,7 +77,21 @@ Corresponds with the version of the archiver and is used for compatibility reaso
 MAX-FX tools and Max Payne 2 modification tools ship RasMaker 1.2, so expect `3F99999A`.  
 <a name="header_footnote5">5</a>.
 CRC-32
-(x<sup>32</sup> + x<sup>26</sup> + x<sup>23</sup> + x<sup>22</sup> + x<sup>16</sup> + x<sup>12</sup> + x<sup>11</sup> + x<sup>10</sup> + x<sup>8</sup> + x<sup>7</sup> + x<sup>5</sup> + x<sup>4</sup> + x<sup>2</sup> + x + 1)  
+(x<sup>32</sup> +
+x<sup>26</sup> +
+x<sup>23</sup> +
+x<sup>22</sup> +
+x<sup>16</sup> +
+x<sup>12</sup> +
+x<sup>11</sup> +
+x<sup>10</sup> +
+x<sup>8</sup> +
+x<sup>7</sup> +
+x<sup>5</sup> +
+x<sup>4</sup> +
+x<sup>2</sup> +
+x +
+1)  
 <a name="header_footnote6">6</a>.
 `3` for the original Max Payne archives, `4` for Max Payne 2 archives.
 
@@ -104,7 +116,8 @@ CRC-32
 3 - stored
 ```
 <a name="file_footnote2">2</a>.
-Stored as a [SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724950.aspx).
+Stored as a
+[SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724950.aspx).
 
 ## Directory table
 ### Entry
@@ -115,10 +128,12 @@ Stored as a [SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/deskto
 | 16       | Creation time<sup>[1](#dir_footnote1)</sup> <sup>[2](#dir_footnote2)</sup> |
 
 <a name="dir_footnote1">1</a>.
-Stored as a [SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724950.aspx).  
+Stored as a
+[SYSTEMTIME](https://msdn.microsoft.com/en-us/library/windows/desktop/ms724950.aspx).  
 <a name="dir_footnote2">2</a>. With two exceptions:  
 1. the root directory has all fields set to 0;  
-2. the source directory (when not using -p) has the creation time of 1601-01-01 00:00:00.000.
+2. the source directory (when not using -p) has the creation time of
+1601-01-01 00:00:00.000.
 
 ## File data
 ### Stored file entry
@@ -127,8 +142,8 @@ Uncompressed entries only contain the individual file data.
 
 ### Compressed file entry
 
-Compressed entries, along with the individual file data, also contain information
-about the file size. They are recognizable by the prefix `RA->`.
+Compressed entries, along with the individual file data, also contain
+information about the file size. They are recognizable by the prefix `RA->`.
 
 | Length | Purpose                                  |
 | ------ | ---------------------------------------- |
@@ -142,8 +157,10 @@ about the file size. They are recognizable by the prefix `RA->`.
 
 #### Compression method
 
-[LZSS](https://dl.acm.org/doi/10.1145/322344.322346)
+The Haruhiko Okumura’s public domain implementation of
+[LZSS](https://dl.acm.org/doi/10.1145/322344.322346) is used.
 
 ### Encrypted file entry
 
-Encrypted entries don’t exist in the wild. They are recognizable by the prefix `RC->`.
+Encrypted entries don’t exist in the wild. They are recognizable by the prefix
+`RC->`.
