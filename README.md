@@ -145,7 +145,7 @@ about the file size. They are recognizable by the prefix `RA->`.
 
 #### Compression method
 
-To be filled in later. Consult the code in the meantime.
+[LZSS](https://dl.acm.org/doi/10.1145/322344.322346)
 
 ### Encrypted file entry
 
