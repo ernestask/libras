@@ -5,12 +5,45 @@
 #include <ras-directory.h>
 #include <ras-file.h>
 
+static bool
+decompress_file (RasFile  *entry,
+                 bool      force,
+                 GFile    *location,
+                 GError  **error)
+{
+    g_autofree char *file_name = NULL;
+    g_autoptr (GFile) file = NULL;
+    g_autoptr (GFileOutputStream) stream = NULL;
+
+    file_name = ras_file_get_name (entry);
+    file = g_file_get_child (location, file_name);
+    if (force)
+    {
+        stream = g_file_replace (file, NULL, false,
+                                 G_FILE_CREATE_REPLACE_DESTINATION, NULL,
+                                 error);
+    }
+    else
+    {
+        stream = g_file_create (file, G_FILE_CREATE_NONE, NULL, error);
+    }
+    if (NULL == stream)
+    {
+        return false;
+    }
+
+    g_message ("Extracting %s…", file_name);
+
+    return ras_file_extract (entry, G_OUTPUT_STREAM (stream), NULL, error);
+}
+
 int
 main (int    argc,
       char **argv)
 {
     g_autoptr (GOptionContext) option_context = NULL;
     gboolean decompress = false;
+    gboolean force = false;
     const char *only = NULL;
     const char *output_dir = "";
     g_auto (GStrv) files = NULL;
@@ -21,6 +54,11 @@ main (int    argc,
             G_OPTION_ARG_NONE, &decompress,
             "Decompress FILE", NULL,
 
+        },
+        {
+            "force", 'f', G_OPTION_FLAG_NONE,
+            G_OPTION_ARG_NONE, &force,
+            "Overwrite existing files", NULL,
         },
         {
             "only", 0, G_OPTION_FLAG_NONE,
@@ -127,20 +165,21 @@ main (int    argc,
 
     if (decompress)
     {
-        for (GList *directory = directory_table; NULL != directory; directory = directory->next)
+        for (GList *d = directory_table; NULL != d; d = d->next)
         {
-            g_autoptr (GList) files;
+            g_autoptr (GList) file_table = NULL;
             g_autofree char *directory_name = NULL;
             g_autofree char *location = NULL;
-            g_autoptr (GFile) directory_file = NULL;
+            g_autoptr (GFile) directory = NULL;
 
-            directory_name = ras_directory_get_name (RAS_DIRECTORY (directory->data), true);
+            file_table = ras_directory_get_files (RAS_DIRECTORY (d->data));
+            directory_name = ras_directory_get_name (RAS_DIRECTORY (d->data), true);
             location = g_build_path (G_DIR_SEPARATOR_S, output_dir, directory_name, NULL);
-            directory_file = g_file_new_for_path (location);
+            directory = g_file_new_for_path (location);
 
-            if (!ras_directory_is_root (RAS_DIRECTORY (directory->data)))
+            if (!ras_directory_is_root (RAS_DIRECTORY (d->data)))
             {
-                if (!g_file_make_directory_with_parents (directory_file, NULL, &error))
+                if (!g_file_make_directory_with_parents (directory, NULL, &error))
                 {
                     if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))
                     {
@@ -150,48 +189,30 @@ main (int    argc,
                     {
                         g_printerr ("Failed to create directory %s: %s\n",
                                     directory_name, error->message);
-
-                        return EXIT_FAILURE;
                     }
                 }
             }
 
-            files = ras_directory_get_files (RAS_DIRECTORY (directory->data));
-
-            for (GList *file = files; NULL != file; file = file->next)
+            for (GList *f = file_table; NULL != f; f = f->next)
             {
                 g_autofree char *file_name = NULL;
-                g_autoptr (GFile) file_file = NULL;
-                g_autoptr (GFileOutputStream) stream = NULL;
 
-                file_name = ras_file_get_name (RAS_FILE (file->data));
+                file_name = ras_file_get_name (RAS_FILE (f->data));
 
-                if (NULL != only)
+                if (g_strcmp0 (only, file_name) == 0)
                 {
-                    if (g_strcmp0 (only, file_name) != 0)
-                    {
-                        continue;
-                    }
-                }
-
-                file_file = g_file_get_child (directory_file, file_name);
-                stream = g_file_create (file_file, G_FILE_CREATE_NONE, NULL, &error);
-                if (NULL == stream && g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))
-                {
-                    g_autofree char *path = NULL;
-
-                    path = g_file_get_path (file_file);
-
-                    g_message ("Destination file %s already exists, skipping", path);
-
-                    g_clear_error (&error);
+                    g_debug ("Skipping %s…", file_name);
 
                     continue;
                 }
 
-                g_message ("Extracting %s to %s", file_name, directory_name);
+                if (!decompress_file (RAS_FILE (f->data), force, directory, &error))
+                {
+                    g_printerr ("Failed to extract %s: %s\n",
+                                file_name, error->message);
 
-                ras_file_extract (file->data, G_OUTPUT_STREAM (stream), NULL, NULL);
+                    return EXIT_FAILURE;
+                }
             }
         }
     }
