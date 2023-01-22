@@ -18,7 +18,7 @@ libras_sources = files(
 libras_dependencies = [
   gio,
   glib,
-  zlib
+  zlib,
 ]
 
 libras = library(
@@ -26,11 +26,11 @@ libras = library(
     libras_headers,
     libras_sources,
   ],
-  dependencies: libras_dependencies
+  dependencies: libras_dependencies,
 )
 
 libras_dep = declare_dependency(
   include_directories: include_directories ('.'),
   link_with: libras,
-  dependencies: libras_dependencies
+  dependencies: libras_dependencies,
 )
