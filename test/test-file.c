@@ -12,6 +12,7 @@ main (int    argc,
     g_autoptr (GOptionContext) option_context = NULL;
     gboolean decompress = false;
     const char *only = NULL;
+    const char *output_dir = "";
     g_auto (GStrv) files = NULL;
     const GOptionEntry option_entries[] =
     {
@@ -25,6 +26,11 @@ main (int    argc,
             "only", 0, G_OPTION_FLAG_NONE,
             G_OPTION_ARG_STRING, &only,
             "Only process ENTRY", "ENTRY",
+        },
+        {
+            "output-dir", 'O', G_OPTION_FLAG_NONE,
+            G_OPTION_ARG_STRING, &output_dir,
+            "Output files to DIR", "DIR",
         },
         {
             G_OPTION_REMAINING, 0, G_OPTION_FLAG_NONE,
@@ -125,10 +131,12 @@ main (int    argc,
         {
             g_autoptr (GList) files;
             g_autofree char *directory_name = NULL;
+            g_autofree char *location = NULL;
             g_autoptr (GFile) directory_file = NULL;
 
             directory_name = ras_directory_get_name (RAS_DIRECTORY (directory->data), true);
-            directory_file = g_file_new_for_path (directory_name);
+            location = g_build_path (G_DIR_SEPARATOR_S, output_dir, directory_name, NULL);
+            directory_file = g_file_new_for_path (location);
 
             if (!ras_directory_is_root (RAS_DIRECTORY (directory->data)))
             {
