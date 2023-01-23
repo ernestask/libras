@@ -26,7 +26,7 @@ non-x86 platforms.
 
 ## Overview
 
-![Overview](ras.png)
+![Overview](/format.png)
 
 ## Header
 
